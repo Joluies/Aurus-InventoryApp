@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurus - Sistema de Inventario Multi-Sede</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .modal { display: none; }
+        .modal.active { display: flex; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased text-gray-900">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col hidden md:flex">
+            <div class="p-6 flex items-center justify-center border-b border-slate-700">
+                <span class="text-2xl font-bold text-yellow-400">AURUS</span>
+                <span class="ml-2 text-sm text-slate-300 mt-1">Inventario</span>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="#" onclick="switchView('dashboard')" id="nav-dashboard" class="nav-link block p-3 rounded-lg bg-yellow-500 text-slate-900 font-semibold transition-colors">
+                    📊 Dashboard Global
+                </a>
+                <a href="#" onclick="switchView('almacen')" id="nav-almacen" class="nav-link block p-3 rounded-lg hover:bg-slate-800 transition-colors text-slate-300">
+                    🧱 Gestión de Almacenes
+                </a>
+                <a href="#" onclick="switchView('mobiliario')" id="nav-mobiliario" class="nav-link block p-3 rounded-lg hover:bg-slate-800 transition-colors text-slate-300">
+                    🪑 Activos y Mobiliario
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            
+            <!-- Headerbar -->
+            <header class="bg-white shadow-sm border-b border-gray-200 p-4 flex justify-between items-center z-10">
+                <div class="flex items-center">
+                    <!-- Menú Hamburguesa para Móvil -->
+                    <button class="md:hidden mr-4 text-slate-600 hover:text-slate-900">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-800" id="header-title">Panel General</h1>
+                </div>
+
+                <div class="flex items-center space-x-3 sm:space-x-6">
+                    <button class="bg-yellow-400 hover:bg-yellow-500 text-slate-900 px-3 py-2 rounded-md font-medium text-sm transition shadow-sm" onclick="alert('📸 Abriendo cámara del dispositivo...')">
+                        📷 Escanear
+                    </button>
+                    
+                    <!-- Selector de Usuario Simulado -->
+                    <div class="relative flex items-center bg-gray-100 rounded-full p-1 border border-gray-200">
+                        <select id="user-selector" class="bg-transparent text-sm font-medium text-slate-700 border-none outline-none focus:ring-0 pl-2 pr-6 cursor-pointer" onchange="changeUser(this.value)">
+                            <option value="admin">👨‍💼 Admin (Gerencia)</option>
+                            <option value="operario">👷 Operario (Solaria)</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- VISTAS -->
+            <div class="p-4 sm:p-6 flex-1 bg-slate-50">
+                
+                <!-- Vista: Dashboard -->
+                <section id="dashboard" class="view-section active">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-yellow-400">
+                            <h3 class="text-gray-500 text-sm font-medium">Valor Total Inventario</h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2">S/ 145,300</p>
+                            <p class="text-xs text-slate-400 mt-1">Consolidado 3 sedes</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
+                            <h3 class="text-gray-500 text-sm font-medium">Almacenes Activos</h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2" id="dash-warehouse-count">3</p>
+                            <p class="text-xs text-blue-500 mt-1">1 Central, 2 Proyectos</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500">
+                            <h3 class="text-gray-500 text-sm font-medium">Stock Crítico</h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2">12</p>
+                            <p class="text-xs text-red-500 mt-1">Requieren atención inmediata</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Vista: Almacén y Sub-almacenes -->
+                <section id="almacen" class="view-section">
+                    
+                    <!-- Controles de Almacén -->
+                    <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div class="w-full sm:w-auto">
+                            <label class="block text-xs text-slate-500 uppercase font-bold mb-1">Seleccionar Sede/Proyecto</label>
+                            <select id="warehouse-filter" class="w-full sm:w-64 bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 p-2.5 shadow-sm font-medium" onchange="loadWarehouseData(this.value)">
+                                <option value="central">🏢 Almacén Central (Principal)</option>
+                                <option value="solaria">🏗️ Proyecto Solaria</option>
+                                <option value="torreb">🏗️ Proyecto Torre B</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="openNewWarehouseModal()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm">
+                                + Nuevo Almacén
+                            </button>
+                            <button class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm">
+                                + Ingreso/Salida
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Datos -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                                        <th class="p-4">Descripción</th>
+                                        <th class="p-4">Categoría</th>
+                                        <th class="p-4 text-center">Stock</th>
+                                        <th class="p-4">Ubicación Fija</th>
+                                        <th class="p-4 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body" class="text-sm text-gray-700 divide-y divide-gray-100">
+                                    <!-- Los datos se inyectan con JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                 <!-- Vista: Mobiliario (Mantenida igual para contexto) -->
+                 <section id="mobiliario" class="view-section">
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 text-center text-slate-500">
+                        <p class="text-lg">Modulo de Activos Fijos (Sillas, Laptops, Celulares)</p>
+                        <p class="text-sm mt-2">Funciona con la misma lógica multi-sede.</p>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Nuevo Almacén -->
+    <div id="new-warehouse-modal" class="modal fixed inset-0 bg-slate-900 bg-opacity-50 z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800">Crear Nuevo Proyecto/Sede</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Proyecto o Almacén</label>
+                    <input type="text" id="new-wh-name" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-yellow-500 focus:border-yellow-500" placeholder="Ej. Proyecto Residencial Centro">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Responsable (Bodeguero)</label>
+                    <select class="w-full border border-gray-300 rounded-lg p-2.5 text-sm">
+                        <option>Seleccionar empleado...</option>
+                        <option>Juan Pérez</option>
+                        <option>Carlos Torres</option>
+                    </select>
+                </div>
+            </div>
+            <div class="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+                <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+                <button onclick="saveNewWarehouse()" class="px-4 py-2 text-sm font-medium text-slate-900 bg-yellow-400 rounded-lg hover:bg-yellow-500 shadow-sm">Guardar Sede</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos Simulados por Almacén
+        const database = {
+            'central': [
+                { desc: 'Cemento X 42.5KG', cat: 'Material', stock: 500, ubi: 'Zona A - Pallets', color: 'blue' },
+                { desc: 'Cable Eléctrico TW-80 14 AWG', cat: 'Material', stock: 120, ubi: 'Estante 2', color: 'blue' },
+                { desc: 'Casco c/ sujetador', cat: 'EPP', stock: 45, ubi: 'Armario EPP', color: 'green' }
+            ],
+            'solaria': [
+                { desc: 'Cemento X 42.5KG', cat: 'Material', stock: 15, ubi: 'Acopio Obra', color: 'blue' },
+                { desc: 'Broca para Metal 3/16"', cat: 'Herramienta', stock: 0, ubi: 'Caja Herr.', color: 'purple', alert: true },
+                { desc: 'Alambre #16', cat: 'Material', stock: 30, ubi: 'Bodega Temporal', color: 'blue' }
+            ],
+            'torreb': [
+                { desc: 'Triplay Plancha 2.4m x 1.2m', cat: 'Material', stock: 8, ubi: 'Patio Trasero', color: 'blue' },
+                { desc: 'Clavo 4" X 1KG', cat: 'Material', stock: 5, ubi: 'Bodega 1', color: 'blue' }
+            ]
+        };
+
+        // Lógica de Vistas (SPA)
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('bg-yellow-500', 'text-slate-900', 'font-semibold');
+                el.classList.add('text-slate-300');
+            });
+            
+            const activeNav = document.getElementById('nav-' + viewId);
+            activeNav.classList.remove('text-slate-300');
+            activeNav.classList.add('bg-yellow-500', 'text-slate-900', 'font-semibold');
+
+            const titles = { 'dashboard': 'Panel General y Reportes', 'almacen': 'Gestión de Múltiples Almacenes', 'mobiliario': 'Inventario de Activos' };
+            document.getElementById('header-title').innerText = titles[viewId];
+        }
+
+        // Cargar datos en la tabla según el almacén seleccionado
+        function loadWarehouseData(warehouseKey) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = ''; // Limpiar tabla
+            
+            const items = database[warehouseKey] || [];
+            
+            if(items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500">No hay items registrados en este almacén aún.</td></tr>`;
+                return;
+            }
+
+            items.forEach(item => {
+                const rowClass = item.alert ? 'bg-red-50' : 'hover:bg-gray-50';
+                const stockText = item.alert ? `<span class="text-red-600 font-bold">${item.stock} (Agotado)</span>` : `<span class="font-bold">${item.stock}</span>`;
+                
+                tbody.innerHTML += `
+                    <tr class="${rowClass} transition-colors">
+                        <td class="p-4 font-medium">${item.desc}</td>
+                        <td class="p-4"><span class="px-2 py-1 bg-${item.color}-100 text-${item.color}-700 rounded-full text-xs font-medium">${item.cat}</span></td>
+                        <td class="p-4 text-center">${stockText}</td>
+                        <td class="p-4 text-slate-500 text-sm">${item.ubi}</td>
+                        <td class="p-4 text-right">
+                            <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">Ver Kardex</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Lógica de Permisos de Usuario
+        function changeUser(role) {
+            const selectWh = document.getElementById('warehouse-filter');
+            if(role === 'operario') {
+                alert('Modo Operario: Solo tienes acceso al Proyecto Solaria.');
+                selectWh.value = 'solaria';
+                selectWh.disabled = true; // Bloquea cambiar de almacén
+                loadWarehouseData('solaria');
+            } else {
+                alert('Modo Gerencia: Tienes acceso total a todos los almacenes.');
+                selectWh.disabled = false;
+                selectWh.value = 'central';
+                loadWarehouseData('central');
+            }
+        }
+
+        // Modal Logic
+        function openNewWarehouseModal() { document.getElementById('new-warehouse-modal').classList.add('active'); }
+        function closeModal() { document.getElementById('new-warehouse-modal').classList.remove('active'); }
+        
+        function saveNewWarehouse() {
+            const name = document.getElementById('new-wh-name').value;
+            if(!name) return alert('Ingrese un nombre');
+            
+            // Simular agregar al dropdown
+            const select = document.getElementById('warehouse-filter');
+            const newOption = new Option(`🏗️ ${name}`, 'nuevo');
+            select.add(newOption);
+            select.value = 'nuevo';
+            
+            database['nuevo'] = []; // Crear bd vacia para este almacen
+            loadWarehouseData('nuevo');
+            
+            document.getElementById('dash-warehouse-count').innerText = select.options.length;
+            
+            closeModal();
+            alert('¡Nuevo almacén/proyecto creado con éxito!');
+        }
+
+        // Init
+        loadWarehouseData('central');
+    </script>
+</body>
+</html>

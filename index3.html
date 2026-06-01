@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="flex items-center space-x-3">
-                    <button class="bg-yellow-400 hover:bg-yellow-500 text-slate-900 px-3 py-2 rounded-md font-medium text-sm transition shadow-sm hidden sm:block" onclick="alert('📸 Abriendo cámara del dispositivo para escanear QR o Código de Barras...')">
+                    <button class="bg-yellow-400 hover:bg-yellow-500 text-slate-900 px-3 py-2 rounded-md font-medium text-sm transition shadow-sm hidden sm:block" onclick="alert('📸 Abriendo cámara del dispositivo...')">
                         📷 Escanear QR
                     </button>
                     
@@ -86,14 +86,14 @@
                         </div>
                         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500">
                             <h3 class="text-gray-500 text-sm font-medium">Stock Crítico</h3>
-                            <p class="text-3xl font-bold text-gray-800 mt-2">1</p>
-                            <p class="text-xs text-red-500 mt-1">Broca para Metal (Agotada)</p>
+                            <p class="text-3xl font-bold text-gray-800 mt-2">12</p>
+                            <p class="text-xs text-red-500 mt-1">Requieren atención inmediata</p>
                         </div>
                     </div>
                     
-                    <!-- Botón de instalación PWA -->
-                    <button id="install-btn" class="hidden w-full bg-slate-900 text-white p-4 rounded-xl shadow-md font-bold mb-6 text-center transition hover:bg-slate-800">
-                        📲 Instalar Sistema Aurus en este dispositivo
+                    <!-- Botón de instalación (Solo visible si el navegador lo permite) -->
+                    <button id="install-btn" class="hidden w-full bg-slate-900 text-white p-4 rounded-xl shadow-md font-bold mb-6 text-center">
+                        📲 Instalar App de Aurus en este dispositivo
                     </button>
                 </section>
 
@@ -116,11 +116,11 @@
                     </div>
 
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="max-h-[60vh] overflow-y-auto">
+                        <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
-                                <thead class="sticky top-0 bg-slate-100 z-10 shadow-sm">
-                                    <tr class="text-slate-600 text-xs uppercase tracking-wider border-b border-gray-200">
-                                        <th class="p-4">Descripción del Artículo</th>
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                                        <th class="p-4">Descripción</th>
                                         <th class="p-4 text-center">Stock</th>
                                         <th class="p-4 hidden sm:table-cell">Categoría</th>
                                     </tr>
@@ -131,12 +131,13 @@
                     </div>
                 </section>
 
-                 <!-- 3. Vista: Mobiliario -->
+                 <!-- 3. Vista: Mobiliario (Fusionada de la versión 1) -->
                  <section id="mobiliario" class="view-section">
                     <div class="mb-4">
-                        <p class="text-slate-500 text-sm">Mostrando activos fijos del <span class="font-bold text-slate-700">Almacén Central</span></p>
+                        <p class="text-slate-500 text-sm">Mostrando activos fijos del <span class="font-bold text-slate-700">Almacén Central (Primer y Segundo Piso)</span></p>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Tarjeta de Silla -->
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div class="h-48 bg-slate-100 flex items-center justify-center relative">
                                 <span class="absolute top-2 right-2 bg-yellow-400 text-xs font-bold px-2 py-1 rounded">QR Asignado</span>
@@ -146,11 +147,12 @@
                                 <h3 class="font-bold text-gray-800">Silla Ergonómica Malla</h3>
                                 <p class="text-xs text-gray-500 mt-1">Ubicación: Recepción - 1er Piso</p>
                                 <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                                    <span class="text-sm font-semibold text-slate-700">Total: 12 Unidades</span>
-                                    <button class="text-blue-600 font-medium text-sm hover:underline">Ver Historial</button>
+                                    <span class="text-sm font-semibold text-slate-700">Stock Visual: 12 Unidades</span>
+                                    <button class="text-blue-600 font-medium text-sm hover:underline">Auditar</button>
                                 </div>
                             </div>
                         </div>
+                         <!-- Tarjeta de Silla -->
                          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div class="h-48 bg-slate-100 flex items-center justify-center relative">
                                 <span class="absolute top-2 right-2 bg-yellow-400 text-xs font-bold px-2 py-1 rounded">QR Asignado</span>
@@ -160,22 +162,8 @@
                                 <h3 class="font-bold text-gray-800">Silla Ejecutiva Cuero</h3>
                                 <p class="text-xs text-gray-500 mt-1">Ubicación: Comercial y RH</p>
                                 <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                                    <span class="text-sm font-semibold text-slate-700">Total: 4 Unidades</span>
-                                    <button class="text-blue-600 font-medium text-sm hover:underline">Ver Historial</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div class="h-48 bg-slate-100 flex items-center justify-center relative">
-                                <span class="absolute top-2 right-2 bg-green-400 text-white text-xs font-bold px-2 py-1 rounded">Operativo</span>
-                                <span class="text-4xl">📱</span>
-                            </div>
-                            <div class="p-4">
-                                <h3 class="font-bold text-gray-800">iPhone 11 128GB</h3>
-                                <p class="text-xs text-gray-500 mt-1">Responsable: Luz Clarita (Gerencia)</p>
-                                <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                                    <span class="text-sm font-semibold text-slate-700">Plan: Entel S/ 85.90</span>
-                                    <button class="text-blue-600 font-medium text-sm hover:underline">Ver Responsiva</button>
+                                    <span class="text-sm font-semibold text-slate-700">Stock Visual: 4 Unidades</span>
+                                    <button class="text-blue-600 font-medium text-sm hover:underline">Auditar</button>
                                 </div>
                             </div>
                         </div>
@@ -191,7 +179,7 @@
                 <button onclick="switchView('almacen')" class="text-slate-400 hover:text-yellow-500 flex flex-col items-center">
                     <span class="text-xl">🧱</span><span class="text-[10px] font-medium mt-1">Kardex</span>
                 </button>
-                <button onclick="alert('Abriendo cámara para escanear QR...')" class="bg-yellow-400 p-3 rounded-full -mt-8 shadow-lg border-4 border-white flex items-center justify-center">
+                <button onclick="alert('Abriendo cámara...')" class="bg-yellow-400 p-3 rounded-full -mt-8 shadow-lg border-4 border-white flex items-center justify-center">
                     <span class="text-xl">📷</span>
                 </button>
                 <button onclick="switchView('mobiliario')" class="text-slate-400 hover:text-yellow-500 flex flex-col items-center">
@@ -221,51 +209,27 @@
     </div>
 
     <script>
-        // --- 1. BASE DE DATOS AMPLIADA (Basada en Excels del Cliente) ---
+        // --- 1. LÓGICA DE LA APLICACIÓN SPA ---
         const database = {
             'central': [
-                { desc: 'Cemento X 42.5KG', cat: 'Material Obra', stock: 500, color: 'blue' },
-                { desc: 'Cable Eléctrico TW-80 14 AWG Blanco', cat: 'Material Obra', stock: 120, color: 'blue' },
-                { desc: 'Casco c/ sujetador', cat: 'EPP', stock: 45, color: 'green' },
-                { desc: 'Hojas Bond A4', cat: 'Papelería', stock: '10 PQT', color: 'purple' },
-                { desc: 'Café Tradición Instantáneo 500gr', cat: 'Consumible', stock: 2, color: 'gray' },
-                { desc: 'Agua Cielo 350ml Pack x24', cat: 'Consumible', stock: 2, color: 'gray' },
-                { desc: 'Lanyards Aurus', cat: 'Merchandising', stock: 50, color: 'pink' },
-                { desc: 'Cinta Adhesiva 2"', cat: 'Papelería', stock: 10, color: 'purple' },
-                { desc: 'Lapicero Azul 035 FC', cat: 'Papelería', stock: 15, color: 'purple' },
-                { desc: 'Chaleco Staff Aurus', cat: 'Indumentaria', stock: 20, color: 'green' }
+                { desc: 'Cemento X 42.5KG', cat: 'Material', stock: 500, color: 'blue' },
+                { desc: 'Cable Eléctrico TW-80', cat: 'Material', stock: 120, color: 'blue' },
+                { desc: 'Casco c/ sujetador', cat: 'EPP', stock: 45, color: 'green' }
             ],
             'solaria': [
-                { desc: 'Cemento X 42.5KG', cat: 'Material Obra', stock: 100, color: 'blue' },
-                { desc: 'Broca para Madera 5/16"', cat: 'Herramienta', stock: 1, color: 'indigo' },
-                { desc: 'Broca para Metal 3/16"', cat: 'Herramienta', stock: 0, color: 'indigo', alert: true },
-                { desc: 'Broca SDS para Concreto 1/4"', cat: 'Herramienta', stock: 4, color: 'indigo' },
-                { desc: 'Cable Eléctrico TW-80 Blanca', cat: 'Material Obra', stock: 30, color: 'blue' },
-                { desc: 'Caja de Pase Octagonal PVC 3/4', cat: 'Material Obra', stock: 6, color: 'blue' },
-                { desc: 'Casco c/ sujetador', cat: 'EPP', stock: 13, color: 'green' },
-                { desc: 'Chaleco Amarillo Talla M', cat: 'Uniforme', stock: 13, color: 'green' },
-                { desc: 'Cincel de punta', cat: 'Herramienta', stock: 5, color: 'indigo' }
+                { desc: 'Cemento X 42.5KG', cat: 'Material', stock: 15, color: 'blue' },
+                { desc: 'Broca para Metal 3/16"', cat: 'Herramienta', stock: 0, color: 'purple', alert: true }
             ],
             'torreb': [
-                { desc: 'Fierro 8mm', cat: 'Material Obra', stock: 444, color: 'blue' },
-                { desc: 'Cemento X 42.5KG', cat: 'Material Obra', stock: 50, color: 'blue' },
-                { desc: 'Triplay Plancha 2.4m x 1.2m', cat: 'Material Obra', stock: 8, color: 'blue' },
-                { desc: 'Clavo 4" X 1KG', cat: 'Consumible Obra', stock: 5, color: 'gray' },
-                { desc: 'Alambre #16', cat: 'Material Obra', stock: 80, color: 'blue' },
-                { desc: 'Alambre #8', cat: 'Material Obra', stock: 10, color: 'blue' },
-                { desc: 'Candado de Seguridad', cat: 'Ferretería', stock: 1, color: 'gray' },
-                { desc: 'Bisagra 3x2', cat: 'Ferretería', stock: 3, color: 'gray' },
-                { desc: 'Tacho de PVC para Basura', cat: 'Mobiliario', stock: 1, color: 'yellow' },
-                { desc: 'Plástico Azul x Rollo', cat: 'Consumible Obra', stock: 14, color: 'gray' }
+                { desc: 'Triplay Plancha', cat: 'Material', stock: 8, color: 'blue' }
             ]
         };
 
-        // --- 2. LÓGICA DE LA SPA ---
         function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
             
-            const titles = { 'dashboard': 'Panel General y KPI', 'almacen': 'Gestión de Inventario Multi-Sede', 'mobiliario': 'Activos y Equipos' };
+            const titles = { 'dashboard': 'Panel General', 'almacen': 'Gestión de Almacenes', 'mobiliario': 'Inventario Fijo' };
             document.getElementById('header-title').innerText = titles[viewId];
         }
 
@@ -275,18 +239,18 @@
             const items = database[warehouseKey] || [];
             
             if(items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-500">No hay registros en este almacén.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-500">No hay items.</td></tr>`;
                 return;
             }
 
             items.forEach(item => {
-                const rowClass = item.alert ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50';
-                const stockText = item.alert ? `<span class="text-red-600 font-bold">${item.stock}</span>` : `<span class="font-bold text-slate-700">${item.stock}</span>`;
+                const rowClass = item.alert ? 'bg-red-50' : '';
+                const stockText = item.alert ? `<span class="text-red-600 font-bold">${item.stock}</span>` : `<span class="font-bold">${item.stock}</span>`;
                 tbody.innerHTML += `
-                    <tr class="${rowClass} border-b border-gray-100 transition-colors">
-                        <td class="p-4 font-medium text-slate-800">${item.desc}</td>
+                    <tr class="${rowClass} border-b border-gray-50">
+                        <td class="p-4 font-medium">${item.desc}</td>
                         <td class="p-4 text-center">${stockText}</td>
-                        <td class="p-4 hidden sm:table-cell"><span class="px-2 py-1 bg-${item.color}-100 text-${item.color}-700 rounded-full text-xs font-medium border border-${item.color}-200">${item.cat}</span></td>
+                        <td class="p-4 hidden sm:table-cell"><span class="px-2 py-1 bg-${item.color}-100 text-${item.color}-700 rounded-full text-xs font-medium">${item.cat}</span></td>
                     </tr>
                 `;
             });
@@ -295,7 +259,7 @@
         function changeUser(role) {
             const selectWh = document.getElementById('warehouse-filter');
             if(role === 'operario') {
-                alert('Modo Operario Activado: Sus permisos han sido limitados al Proyecto Solaria.');
+                alert('Modo Operario: Solo tienes acceso al Proyecto Solaria.');
                 selectWh.value = 'solaria'; selectWh.disabled = true;
                 loadWarehouseData('solaria');
             } else {
@@ -316,27 +280,27 @@
             loadWarehouseData('nuevo');
             document.getElementById('dash-warehouse-count').innerText = select.options.length;
             closeModal();
-            alert('¡Nuevo almacén registrado en el sistema!');
+            alert('¡Nuevo almacén creado!');
         }
 
-        // Inicializar tabla
         loadWarehouseData('central');
 
-        // --- 3. LÓGICA DE INSTALACIÓN PWA ---
+        // --- 2. LÓGICA DE INSTALACIÓN PWA (Service Worker) ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Service Worker listo'))
-                .catch(err => console.error('Error SW', err));
+                .then(reg => console.log('Service Worker registrado', reg))
+                .catch(err => console.error('Error registrando SW', err));
             });
         }
 
+        // Detectar si se puede instalar y mostrar el botón
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            installBtn.classList.remove('hidden');
+            installBtn.classList.remove('hidden'); // Muestra el botón
         });
 
         installBtn.addEventListener('click', async () => {
