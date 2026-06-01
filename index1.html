@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Aurus · Control de Inventario</title>
+
+<!-- ===== PWA / Meta para instalación ===== -->
+<meta name="theme-color" content="#0f1e33" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Aurus Inventario" />
+<meta name="description" content="Sistema de control de inventario, activos y equipos para Aurus Constructora e Inmobiliaria." />
+<link id="manifest-link" rel="manifest" />
+<link id="apple-icon" rel="apple-touch-icon" />
+<link id="fav-icon" rel="icon" type="image/png" />
+
+<!-- ===== Tailwind CSS (CDN) ===== -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- ===== FontAwesome (CDN) ===== -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+<!-- ===== Generador de códigos QR (CDN) ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- ===== Lector de QR con cámara real (CDN) ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
+<!-- ===== Tipografías distintivas ===== -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- ===== Configuración de tema Tailwind ===== -->
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Bricolage Grotesque"', 'sans-serif'],
+          sans: ['Manrope', 'sans-serif'],
+        },
+        colors: {
+          navy:  { 900:'#0b1626', 800:'#0f1e33', 700:'#16294a', 600:'#1f3a66', 500:'#2e4f82' },
+          slate2:{ 50:'#f6f8fb', 100:'#eef2f7', 200:'#dde5ee' },
+          gold:  { 400:'#ffcb2e', 500:'#f4b500', 600:'#d99a00' },
+        },
+        boxShadow: {
+          card: '0 1px 2px rgba(15,30,51,.06), 0 8px 24px -12px rgba(15,30,51,.18)',
+          fab:  '0 10px 30px -6px rgba(244,181,0,.55)',
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root { --safe-b: env(safe-area-inset-bottom, 0px); }
+  html, body { -webkit-tap-highlight-color: transparent; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 100% -10%, rgba(244,181,0,.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(31,58,102,.10), transparent 55%),
+      #f6f8fb;
+  }
+  /* Ocultar scrollbars horizontales en tablas móviles pero mantener funcional */
+  .no-sb::-webkit-scrollbar { height: 6px; }
+  .no-sb::-webkit-scrollbar-thumb { background: #c8d3e0; border-radius: 99px; }
+
+  /* Transición de vistas tipo SPA */
+  .view { display: none; animation: fade .35s ease both; }
+  .view.active { display: block; }
+  @keyframes fade { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+
+  /* Reveal escalonado de tarjetas */
+  .reveal { opacity:0; transform: translateY(10px); animation: rise .5s ease forwards; }
+  @keyframes rise { to { opacity:1; transform:none; } }
+
+  /* Item activo de navegación */
+  .nav-link.active { color:#f4b500; }
+  .nav-link.active .nav-ico { background: rgba(244,181,0,.14); }
+
+  .bottom-link.active { color:#0f1e33; }
+  .bottom-link.active .b-ico {
+    background:#0f1e33; color:#f4b500; transform: translateY(-14px) scale(1.05);
+    box-shadow: 0 10px 22px -8px rgba(15,30,51,.6);
+  }
+
+  /* Pulso del escáner */
+  @keyframes scanline { 0%{ top:0 } 100%{ top:100% } }
+  .scan-line { animation: scanline 2s linear infinite; }
+  @keyframes pulse-ring { 0%{ transform:scale(.8); opacity:.7 } 100%{ transform:scale(1.6); opacity:0 } }
+
+  /* Chip de categoría */
+  .chip { transition: all .15s ease; }
+</style>
+</head>
+
+<body class="font-sans text-navy-900 antialiased">
+
+<!-- =========================================================
+     LAYOUT GENERAL
+     - Sidebar (escritorio) + Topbar (móvil) + Bottom Nav (móvil)
+========================================================== -->
+<div class="lg:flex min-h-screen">
+
+  <!-- ============ SIDEBAR (solo escritorio) ============ -->
+  <aside class="hidden lg:flex lg:flex-col w-72 shrink-0 bg-navy-800 text-white p-6 sticky top-0 h-screen">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 mb-10">
+      <div class="w-11 h-11 grid place-items-center">
+        <svg viewBox="0 0 100 100" class="w-11 h-11">
+          <polygon points="50,8 86,29 86,71 50,92 14,71 14,29" fill="#f4b500"/>
+          <polygon points="50,26 70,38 70,62 50,74 30,62 30,38" fill="#0f1e33"/>
+        </svg>
+      </div>
+      <div>
+        <p class="font-display font-extrabold text-xl tracking-tight leading-none">AURUS</p>
+        <p class="text-[10px] tracking-[.25em] text-gold-500 mt-1">CONSTRUCTORA</p>
+      </div>
+    </div>
+
+    <!-- Navegación -->
+    <nav class="flex-1 space-y-1">
+      <a data-view="dashboard" class="nav-link active flex items-center gap-3 px-3 py-3 rounded-xl text-slate-300 hover:text-white transition cursor-pointer">
+        <span class="nav-ico w-9 h-9 grid place-items-center rounded-lg"><i class="fa-solid fa-gauge-high"></i></span>
+        <span class="font-semibold text-sm">Dashboard</span>
+      </a>
+      <a data-view="almacen" class="nav-link flex items-center gap-3 px-3 py-3 rounded-xl text-slate-300 hover:text-white transition cursor-pointer">
+        <span class="nav-ico w-9 h-9 grid place-items-center rounded-lg"><i class="fa-solid fa-boxes-stacked"></i></span>
+        <span class="font-semibold text-sm">Almacén Solaria</span>
+      </a>
+      <a data-view="equipos" class="nav-link flex items-center gap-3 px-3 py-3 rounded-xl text-slate-300 hover:text-white transition cursor-pointer">
+        <span class="nav-ico w-9 h-9 grid place-items-center rounded-lg"><i class="fa-solid fa-mobile-screen-button"></i></span>
+        <span class="font-semibold text-sm">Asignación Equipos</span>
+      </a>
+      <a data-view="mobiliario" class="nav-link flex items-center gap-3 px-3 py-3 rounded-xl text-slate-300 hover:text-white transition cursor-pointer">
+        <span class="nav-ico w-9 h-9 grid place-items-center rounded-lg"><i class="fa-solid fa-chair"></i></span>
+        <span class="font-semibold text-sm">Inventario Visual</span>
+      </a>
+    </nav>
+
+    <button onclick="openScanner()" class="mt-4 w-full flex items-center justify-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold py-3 rounded-xl transition shadow-fab">
+      <i class="fa-solid fa-qrcode"></i> Escanear QR
+    </button>
+    <p class="text-[11px] text-slate-500 mt-4 text-center">Prototipo demo · v1.0</p>
+  </aside>
+
+  <!-- ============ CONTENIDO PRINCIPAL ============ -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- ---- Topbar (móvil) ---- -->
+    <header class="lg:hidden sticky top-0 z-30 bg-navy-800/95 backdrop-blur text-white px-4 pt-4 pb-3"
+            style="padding-top:max(1rem,env(safe-area-inset-top))">
+      <div class="flex items-center gap-3">
+        <svg viewBox="0 0 100 100" class="w-9 h-9">
+          <polygon points="50,8 86,29 86,71 50,92 14,71 14,29" fill="#f4b500"/>
+          <polygon points="50,26 70,38 70,62 50,74 30,62 30,38" fill="#0f1e33"/>
+        </svg>
+        <div class="flex-1">
+          <p id="topTitle" class="font-display font-extrabold text-lg leading-none">Dashboard</p>
+          <p class="text-[10px] tracking-widest text-gold-500 mt-1">AURUS INVENTARIO</p>
+        </div>
+        <button class="w-9 h-9 grid place-items-center rounded-full bg-white/10">
+          <i class="fa-regular fa-bell text-sm"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ---- Header escritorio ---- -->
+    <header class="hidden lg:block px-10 pt-8">
+      <h1 id="deskTitle" class="font-display font-extrabold text-3xl tracking-tight">Panel de Control</h1>
+      <p id="deskSub" class="text-slate-500 mt-1 text-sm">Resumen general del inventario de Aurus.</p>
+    </header>
+
+    <!-- ============================================================
+         VISTAS (SPA)
+    ============================================================ -->
+    <main class="flex-1 px-4 lg:px-10 py-5 pb-28 lg:pb-10 max-w-7xl w-full mx-auto">
+
+      <!-- ========== VISTA 1: DASHBOARD ========== -->
+      <section id="view-dashboard" class="view active">
+        <!-- KPIs -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div class="reveal bg-navy-800 text-white rounded-2xl p-4 lg:p-5 shadow-card relative overflow-hidden" style="animation-delay:.05s">
+            <i class="fa-solid fa-cubes absolute -right-2 -bottom-3 text-6xl text-white/5"></i>
+            <p class="text-[11px] uppercase tracking-wider text-slate-300">Total Activos</p>
+            <p id="kpiActivos" class="font-display font-extrabold text-3xl mt-2">—</p>
+            <p class="text-[11px] text-gold-500 mt-1"><i class="fa-solid fa-layer-group"></i> Ítems registrados</p>
+          </div>
+          <div class="reveal bg-white rounded-2xl p-4 lg:p-5 shadow-card border border-slate2-100 relative overflow-hidden" style="animation-delay:.12s">
+            <i class="fa-solid fa-triangle-exclamation absolute -right-2 -bottom-3 text-6xl text-red-500/5"></i>
+            <p class="text-[11px] uppercase tracking-wider text-slate-400">Stock Crítico</p>
+            <p id="kpiCritico" class="font-display font-extrabold text-3xl mt-2 text-red-600">—</p>
+            <p class="text-[11px] text-slate-400 mt-1">Materiales en mínimo</p>
+          </div>
+          <div class="reveal bg-white rounded-2xl p-4 lg:p-5 shadow-card border border-slate2-100 relative overflow-hidden" style="animation-delay:.19s">
+            <i class="fa-solid fa-mobile-screen absolute -right-2 -bottom-3 text-6xl text-navy-600/5"></i>
+            <p class="text-[11px] uppercase tracking-wider text-slate-400">Celulares</p>
+            <p id="kpiCelulares" class="font-display font-extrabold text-3xl mt-2 text-navy-700">—</p>
+            <p class="text-[11px] text-slate-400 mt-1">Equipos asignados</p>
+          </div>
+          <div class="reveal bg-white rounded-2xl p-4 lg:p-5 shadow-card border border-slate2-100 relative overflow-hidden" style="animation-delay:.26s">
+            <i class="fa-solid fa-chair absolute -right-2 -bottom-3 text-6xl text-gold-500/10"></i>
+            <p class="text-[11px] uppercase tracking-wider text-slate-400">Mobiliario</p>
+            <p id="kpiSillas" class="font-display font-extrabold text-3xl mt-2">—</p>
+            <p class="text-[11px] text-slate-400 mt-1">Sillas en 4 pisos</p>
+          </div>
+        </div>
+
+        <!-- Accesos rápidos -->
+        <h2 class="font-display font-bold text-lg mt-7 mb-3">Accesos rápidos</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <button onclick="go('almacen')" class="bg-white rounded-2xl p-4 shadow-card border border-slate2-100 text-left hover:-translate-y-0.5 transition">
+            <span class="w-10 h-10 grid place-items-center rounded-xl bg-navy-800 text-gold-500"><i class="fa-solid fa-boxes-stacked"></i></span>
+            <p class="font-semibold mt-3 text-sm">Almacén Solaria</p>
+            <p class="text-xs text-slate-400">Kardex de materiales</p>
+          </button>
+          <button onclick="go('equipos')" class="bg-white rounded-2xl p-4 shadow-card border border-slate2-100 text-left hover:-translate-y-0.5 transition">
+            <span class="w-10 h-10 grid place-items-center rounded-xl bg-navy-800 text-gold-500"><i class="fa-solid fa-mobile-screen-button"></i></span>
+            <p class="font-semibold mt-3 text-sm">Equipos</p>
+            <p class="text-xs text-slate-400">Celulares asignados</p>
+          </button>
+          <button onclick="go('mobiliario')" class="bg-white rounded-2xl p-4 shadow-card border border-slate2-100 text-left hover:-translate-y-0.5 transition">
+            <span class="w-10 h-10 grid place-items-center rounded-xl bg-navy-800 text-gold-500"><i class="fa-solid fa-chair"></i></span>
+            <p class="font-semibold mt-3 text-sm">Mobiliario</p>
+            <p class="text-xs text-slate-400">Inventario visual</p>
+          </button>
+          <button onclick="openScanner()" class="bg-gold-500 rounded-2xl p-4 shadow-card text-left hover:-translate-y-0.5 transition">
+            <span class="w-10 h-10 grid place-items-center rounded-xl bg-navy-900 text-gold-500"><i class="fa-solid fa-qrcode"></i></span>
+            <p class="font-semibold mt-3 text-sm text-navy-900">Escanear QR</p>
+            <p class="text-xs text-navy-900/60">Registro en campo</p>
+          </button>
+        </div>
+
+        <!-- Stock crítico + movimientos -->
+        <div class="grid lg:grid-cols-2 gap-4 mt-7">
+          <div class="bg-white rounded-2xl shadow-card border border-slate2-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate2-100 flex items-center justify-between">
+              <h3 class="font-display font-bold">⚠️ Atención: stock bajo</h3>
+              <button onclick="go('almacen')" class="text-xs font-semibold text-navy-600">Ver todo →</button>
+            </div>
+            <ul id="criticalList" class="divide-y divide-slate2-100"></ul>
+          </div>
+          <div class="bg-white rounded-2xl shadow-card border border-slate2-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate2-100">
+              <h3 class="font-display font-bold">Distribución por categoría</h3>
+            </div>
+            <div id="catBars" class="p-5 space-y-3"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== VISTA 2: ALMACÉN SOLARIA ========== -->
+      <section id="view-almacen" class="view">
+        <!-- Buscador + filtros -->
+        <div class="flex flex-col gap-3">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input id="searchAlmacen" oninput="renderAlmacen()" type="text" placeholder="Buscar material, herramienta, EPP…"
+                   class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-slate2-200 shadow-card focus:outline-none focus:ring-2 focus:ring-gold-500/40 focus:border-gold-500 text-sm" />
+          </div>
+          <div id="catFilters" class="flex gap-2 overflow-x-auto no-sb pb-1"></div>
+        </div>
+
+        <div class="flex justify-end mt-3">
+          <button onclick="printAllLabels()" class="inline-flex items-center gap-2 text-xs font-bold text-navy-800 bg-white border border-slate2-200 shadow-card px-3.5 py-2 rounded-full hover:bg-slate2-50 transition">
+            <i class="fa-solid fa-tags text-gold-600"></i> Imprimir etiquetas QR
+          </button>
+        </div>
+
+        <!-- Resumen mini -->
+        <div class="grid grid-cols-3 gap-3 mt-4">
+          <div class="bg-white rounded-2xl p-3 shadow-card border border-slate2-100 text-center">
+            <p id="almTotal" class="font-display font-extrabold text-2xl">—</p>
+            <p class="text-[11px] text-slate-400">Ítems</p>
+          </div>
+          <div class="bg-white rounded-2xl p-3 shadow-card border border-slate2-100 text-center">
+            <p id="almUnidades" class="font-display font-extrabold text-2xl text-navy-700">—</p>
+            <p class="text-[11px] text-slate-400">Unid. en stock</p>
+          </div>
+          <div class="bg-white rounded-2xl p-3 shadow-card border border-slate2-100 text-center">
+            <p id="almCriticos" class="font-display font-extrabold text-2xl text-red-600">—</p>
+            <p class="text-[11px] text-slate-400">Críticos</p>
+          </div>
+        </div>
+
+        <!-- Lista de materiales -->
+        <div id="almacenList" class="mt-4 space-y-2.5"></div>
+        <p id="almacenEmpty" class="hidden text-center text-slate-400 py-10 text-sm">No se encontraron ítems con ese criterio.</p>
+      </section>
+
+      <!-- ========== VISTA 3: ASIGNACIÓN DE EQUIPOS ========== -->
+      <section id="view-equipos" class="view">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input id="searchEquipos" oninput="renderEquipos()" type="text" placeholder="Buscar por responsable, modelo o área…"
+                 class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-slate2-200 shadow-card focus:outline-none focus:ring-2 focus:ring-gold-500/40 focus:border-gold-500 text-sm" />
+        </div>
+        <div id="equiposList" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-3.5 mt-4"></div>
+      </section>
+
+      <!-- ========== VISTA 4: INVENTARIO VISUAL ========== -->
+      <section id="view-mobiliario" class="view">
+        <!-- Resumen por piso -->
+        <div class="bg-white rounded-2xl shadow-card border border-slate2-100 overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate2-100 flex items-center justify-between">
+            <h3 class="font-display font-bold">Distribución por edificio</h3>
+            <span class="text-xs font-bold text-navy-700 bg-slate2-100 px-3 py-1 rounded-full"><span id="totalSillas">92</span> sillas</span>
+          </div>
+          <div id="pisoSummary" class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate2-100"></div>
+        </div>
+
+        <!-- Galería por ubicación -->
+        <div id="galeria" class="mt-5 space-y-6"></div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ BOTTOM NAVIGATION (solo móvil) ============ -->
+<nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate2-200"
+     style="padding-bottom:var(--safe-b)">
+  <div class="grid grid-cols-5 items-end px-2 pt-2 pb-2">
+    <a data-view="dashboard" class="bottom-link active flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold cursor-pointer">
+      <span class="b-ico w-10 h-10 grid place-items-center rounded-2xl transition-all duration-300"><i class="fa-solid fa-gauge-high"></i></span>
+      Inicio
+    </a>
+    <a data-view="almacen" class="bottom-link flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold cursor-pointer">
+      <span class="b-ico w-10 h-10 grid place-items-center rounded-2xl transition-all duration-300"><i class="fa-solid fa-boxes-stacked"></i></span>
+      Almacén
+    </a>
+    <!-- FAB central -->
+    <div class="flex justify-center">
+      <button onclick="openScanner()" class="w-14 h-14 -mt-6 rounded-full bg-gold-500 text-navy-900 grid place-items-center shadow-fab active:scale-95 transition">
+        <i class="fa-solid fa-qrcode text-xl"></i>
+      </button>
+    </div>
+    <a data-view="equipos" class="bottom-link flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold cursor-pointer">
+      <span class="b-ico w-10 h-10 grid place-items-center rounded-2xl transition-all duration-300"><i class="fa-solid fa-mobile-screen-button"></i></span>
+      Equipos
+    </a>
+    <a data-view="mobiliario" class="bottom-link flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold cursor-pointer">
+      <span class="b-ico w-10 h-10 grid place-items-center rounded-2xl transition-all duration-300"><i class="fa-solid fa-chair"></i></span>
+      Mobiliario
+    </a>
+  </div>
+</nav>
+
+<!-- ============================================================
+     MODAL: AGREGAR / EDITAR ÍTEM DE ALMACÉN
+============================================================ -->
+<div id="modalItem" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-navy-900/60 backdrop-blur-sm" onclick="closeItemModal()"></div>
+  <div class="absolute inset-x-0 bottom-0 lg:inset-0 lg:m-auto lg:h-fit lg:max-w-md
+              bg-white rounded-t-3xl lg:rounded-3xl p-6 shadow-2xl animate-[fade_.3s_ease]">
+    <div class="w-12 h-1.5 bg-slate2-200 rounded-full mx-auto mb-5 lg:hidden"></div>
+    <div class="flex items-center justify-between mb-4">
+      <h3 id="modalItemTitle" class="font-display font-extrabold text-xl">Nuevo ítem</h3>
+      <button onclick="closeItemModal()" class="w-9 h-9 grid place-items-center rounded-full bg-slate2-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-semibold text-slate-500">Descripción</label>
+        <input id="f_nombre" type="text" placeholder="Ej. Cemento X 42.5KG"
+               class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-sm" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-500">Stock</label>
+          <input id="f_stock" type="number" min="0" value="0"
+                 class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-500">Unidad</label>
+          <select id="f_und" class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-sm">
+            <option>UND</option><option>KG</option><option>CAJA</option><option>PQT</option><option>ML</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-500">Categoría</label>
+          <select id="f_cat" class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-sm">
+            <option>Material</option><option>Herramienta</option><option>EPP</option><option>Uniforme</option><option>Consumible</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-500">Stock mínimo</label>
+          <input id="f_min" type="number" min="0" value="3"
+                 class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-sm" />
+        </div>
+      </div>
+    </div>
+    <button onclick="saveItem()" class="mt-5 w-full bg-navy-800 hover:bg-navy-700 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar ítem
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: REGISTRAR MOVIMIENTO (Ingreso / Salida)
+============================================================ -->
+<div id="modalMove" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-navy-900/60 backdrop-blur-sm" onclick="closeMoveModal()"></div>
+  <div class="absolute inset-x-0 bottom-0 lg:inset-0 lg:m-auto lg:h-fit lg:max-w-sm
+              bg-white rounded-t-3xl lg:rounded-3xl p-6 shadow-2xl animate-[fade_.3s_ease]">
+    <div class="w-12 h-1.5 bg-slate2-200 rounded-full mx-auto mb-5 lg:hidden"></div>
+    <div class="flex items-center justify-between mb-1">
+      <h3 class="font-display font-extrabold text-xl">Movimiento</h3>
+      <button onclick="closeMoveModal()" class="w-9 h-9 grid place-items-center rounded-full bg-slate2-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <p id="moveItemName" class="text-sm text-slate-500 mb-4">—</p>
+    <div class="flex gap-2 mb-4">
+      <button id="btnIng" onclick="setMoveType('in')" class="flex-1 py-3 rounded-xl font-bold text-sm border-2 transition">
+        <i class="fa-solid fa-arrow-down"></i> Ingreso
+      </button>
+      <button id="btnSal" onclick="setMoveType('out')" class="flex-1 py-3 rounded-xl font-bold text-sm border-2 transition">
+        <i class="fa-solid fa-arrow-up"></i> Salida
+      </button>
+    </div>
+    <label class="text-xs font-semibold text-slate-500">Cantidad</label>
+    <input id="moveQty" type="number" min="1" value="1"
+           class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-lg font-bold text-center" />
+    <button onclick="confirmMove()" class="mt-5 w-full bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold py-3.5 rounded-xl transition">
+      Confirmar movimiento
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: ESCÁNER QR (simulado)
+============================================================ -->
+<div id="modalScan" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-navy-900/90 backdrop-blur" onclick="closeScanner()"></div>
+  <div class="absolute inset-x-0 bottom-0 lg:inset-0 lg:m-auto lg:h-fit lg:max-w-sm
+              bg-navy-800 text-white rounded-t-3xl lg:rounded-3xl p-6 shadow-2xl animate-[fade_.3s_ease]">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display font-extrabold text-xl">Escanear código QR</h3>
+      <button onclick="closeScanner()" class="w-9 h-9 grid place-items-center rounded-full bg-white/10"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <!-- Visor de cámara real (html5-qrcode inyecta el <video> en #reader) -->
+    <div class="relative aspect-square rounded-2xl bg-navy-900 overflow-hidden grid place-items-center">
+      <div id="reader" class="absolute inset-0 [&_video]:object-cover [&_video]:w-full [&_video]:h-full"></div>
+      <!-- Overlay decorativo (marco) -->
+      <div class="pointer-events-none relative w-44 h-44 border-2 border-gold-500/60 rounded-2xl z-10">
+        <span class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-gold-500 rounded-tl-xl"></span>
+        <span class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-gold-500 rounded-tr-xl"></span>
+        <span class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-gold-500 rounded-bl-xl"></span>
+        <span class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-gold-500 rounded-br-xl"></span>
+        <div class="scan-line absolute left-1 right-1 h-0.5 bg-gold-500 shadow-[0_0_12px_2px_#f4b500]"></div>
+      </div>
+      <p id="scanStatus" class="absolute bottom-3 z-10 text-[11px] text-slate-300 bg-navy-900/70 px-3 py-1 rounded-full">Iniciando cámara…</p>
+    </div>
+    <button onclick="simulateScan()" class="mt-5 w-full bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold py-3.5 rounded-xl transition">
+      <i class="fa-solid fa-bolt"></i> Simular lectura (demo sin cámara)
+    </button>
+    <!-- Entrada manual del código (lo que va impreso bajo el QR) -->
+    <div class="mt-4 pt-4 border-t border-white/10">
+      <label class="text-[11px] text-slate-400">¿No hay cámara? Ingresa el código del QR</label>
+      <div class="flex gap-2 mt-1.5">
+        <input id="scanCode" type="text" placeholder="Ej. AURUS-ALM-m1"
+               class="flex-1 px-3 py-2.5 rounded-xl bg-navy-900 border border-white/10 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold-500/40 placeholder:text-slate-500" />
+        <button onclick="resolveScan(document.getElementById('scanCode').value)" class="px-4 rounded-xl bg-white/10 hover:bg-white/20 transition font-bold text-sm">Buscar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: CÓDIGO QR DEL ACTIVO (generar / imprimir / descargar)
+============================================================ -->
+<div id="modalQR" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-navy-900/60 backdrop-blur-sm" onclick="closeQR()"></div>
+  <div class="absolute inset-x-0 bottom-0 lg:inset-0 lg:m-auto lg:h-fit lg:max-w-xs
+              bg-white rounded-t-3xl lg:rounded-3xl p-6 shadow-2xl animate-[fade_.3s_ease]">
+    <div class="w-12 h-1.5 bg-slate2-200 rounded-full mx-auto mb-5 lg:hidden"></div>
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display font-extrabold text-lg">Código QR</h3>
+      <button onclick="closeQR()" class="w-9 h-9 grid place-items-center rounded-full bg-slate2-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <!-- Etiqueta imprimible -->
+    <div id="qrLabel" class="border-2 border-dashed border-slate2-200 rounded-2xl p-5 text-center">
+      <div class="flex items-center justify-center gap-2 mb-3">
+        <svg viewBox="0 0 100 100" class="w-5 h-5"><polygon points="50,8 86,29 86,71 50,92 14,71 14,29" fill="#f4b500"/><polygon points="50,26 70,38 70,62 50,74 30,62 30,38" fill="#0f1e33"/></svg>
+        <span class="font-display font-extrabold text-sm tracking-tight">AURUS</span>
+      </div>
+      <div id="qrCanvas" class="grid place-items-center mb-3 [&_img]:mx-auto [&_canvas]:mx-auto"></div>
+      <p id="qrName" class="font-semibold text-sm leading-tight">—</p>
+      <p id="qrCode" class="font-mono text-[11px] text-slate-400 mt-1">—</p>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mt-4">
+      <button onclick="downloadQR()" class="py-3 rounded-xl bg-slate2-100 hover:bg-slate2-200 font-bold text-sm transition flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> PNG</button>
+      <button onclick="printQR()" class="py-3 rounded-xl bg-navy-800 hover:bg-navy-700 text-white font-bold text-sm transition flex items-center justify-center gap-2"><i class="fa-solid fa-print"></i> Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: NUEVO MOBILIARIO (con foto real)
+============================================================ -->
+<div id="modalFurni" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-navy-900/60 backdrop-blur-sm" onclick="closeFurni()"></div>
+  <div class="absolute inset-x-0 bottom-0 lg:inset-0 lg:m-auto lg:h-fit lg:max-w-md
+              bg-white rounded-t-3xl lg:rounded-3xl p-6 shadow-2xl animate-[fade_.3s_ease]">
+    <div class="w-12 h-1.5 bg-slate2-200 rounded-full mx-auto mb-5 lg:hidden"></div>
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display font-extrabold text-xl">Agregar mobiliario</h3>
+      <button onclick="closeFurni()" class="w-9 h-9 grid place-items-center rounded-full bg-slate2-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <p id="furniZona" class="text-xs font-semibold text-gold-600 mb-3">—</p>
+
+    <!-- Subir / tomar foto -->
+    <label for="furniFile" class="block cursor-pointer">
+      <div id="furniPreview" class="aspect-video rounded-2xl border-2 border-dashed border-slate2-200 grid place-items-center text-slate-400 overflow-hidden bg-slate2-50">
+        <div class="text-center"><i class="fa-solid fa-camera text-2xl"></i><p class="text-xs mt-2">Toca para tomar o subir foto</p></div>
+      </div>
+    </label>
+    <input id="furniFile" type="file" accept="image/*" capture="environment" class="hidden" onchange="previewFurni(this)" />
+
+    <div class="grid grid-cols-3 gap-3 mt-3">
+      <div class="col-span-2">
+        <label class="text-xs font-semibold text-slate-500">Descripción</label>
+        <input id="furniTipo" type="text" placeholder="Ej. Silla Ejecutiva Cuero"
+               class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-500">Cantidad</label>
+        <input id="furniCant" type="number" min="1" value="1"
+               class="mt-1 w-full px-4 py-3 rounded-xl bg-slate2-50 border border-slate2-200 focus:outline-none focus:ring-2 focus:ring-gold-500/40 text-sm text-center font-bold" />
+      </div>
+    </div>
+    <button onclick="saveFurni()" class="mt-5 w-full bg-navy-800 hover:bg-navy-700 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar
+    </button>
+  </div>
+</div>
+
+<!-- ============ TOAST ============ -->
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-24 lg:bottom-8 z-[60] hidden">
+  <div class="bg-navy-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2">
+    <i id="toastIco" class="fa-solid fa-circle-check text-gold-500"></i>
+    <span id="toastMsg">Listo</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT — Lógica SPA + LocalStorage
+============================================================ -->
+<script>
+/* ============================================================
+   1) DATOS SEMILLA (basados en los Excel reales de Aurus)
+   Se cargan a LocalStorage la primera vez.
+============================================================ */
+const SEED_ALMACEN = [
+  { id:'m1', nombre:'CEMENTO X 42.5KG',                 stock:100, und:'UND', cat:'Material',    min:20 },
+  { id:'m2', nombre:'CABLE ELECTRICO TW-80 14 AWG',     stock:30,  und:'ML',  cat:'Material',    min:15 },
+  { id:'m3', nombre:'CAJA DE PASE OCTAGONAL PVC 3/4',   stock:6,   und:'UND', cat:'Material',    min:10 },
+  { id:'m4', nombre:'UNION PVC AGUA 1-1/2 (48mm)',      stock:3,   und:'UND', cat:'Material',    min:5  },
+  { id:'m5', nombre:'BROCA PARA MADERA 5/16"',          stock:1,   und:'UND', cat:'Herramienta', min:3  },
+  { id:'m6', nombre:'BROCA PARA METAL 3/16"',           stock:0,   und:'UND', cat:'Herramienta', min:3  },
+  { id:'m7', nombre:'BROCA SDS CONCRETO 1/4" x160mm',   stock:4,   und:'UND', cat:'Herramienta', min:3  },
+  { id:'m8', nombre:'CINCEL DE PUNTA',                  stock:5,   und:'UND', cat:'Herramienta', min:2  },
+  { id:'m9', nombre:'CASCO C/ SUJETADOR',               stock:13,  und:'UND', cat:'EPP',         min:5  },
+  { id:'m10',nombre:'ZAPATOS DE SEGURIDAD',             stock:0,   und:'UND', cat:'EPP',         min:4  },
+  { id:'m11',nombre:'CHALECO AMARILLO TALLA M',         stock:13,  und:'UND', cat:'Uniforme',    min:5  },
+  { id:'m12',nombre:'CHALECO AMARILLO TALLA S',         stock:1,   und:'UND', cat:'Uniforme',    min:5  },
+  { id:'m13',nombre:'CHALECO AMARILLO TALLA XL',        stock:7,   und:'UND', cat:'Uniforme',    min:5  },
+  { id:'m14',nombre:'LANYARDS AURUS',                   stock:2,   und:'UND', cat:'Uniforme',    min:10 },
+  { id:'m15',nombre:'HOJAS BOND A4',                    stock:6,   und:'PQT', cat:'Consumible',  min:10 },
+  { id:'m16',nombre:'PAPEL TOALLA X 12UND',             stock:36,  und:'PQT', cat:'Consumible',  min:12 },
+  { id:'m17',nombre:'BOLSA BASURA 65X100CM 75L',        stock:5,   und:'PQT', cat:'Consumible',  min:8  },
+  { id:'m18',nombre:'LAPICERO AZUL 035 FC',             stock:2,   und:'UND', cat:'Consumible',  min:12 },
+];
+
+const SEED_EQUIPOS = [
+  { id:'c1', resp:'Luz Clarita',         area:'Gerencia General',           modelo:'iPhone 11 128GB',     marca:'Apple',  imei:'350263903083368', linea:'ENTEL', plan:'S/ 85.90' },
+  { id:'c2', resp:'Luz Clarita',         area:'Gerencia General',           modelo:'Galaxy A55 5G 256GB', marca:'Samsung',imei:'353948921810522', linea:'ENTEL', plan:'—' },
+  { id:'c3', resp:'Kiara Zorrilla',      area:'Comercial',                  modelo:'Redmi Note 9 Pro',    marca:'Redmi',  imei:'868656051556439', linea:'ENTEL', plan:'S/ 74.90' },
+  { id:'c4', resp:'Gabriela Gallo',      area:'Coordinador Marketing',      modelo:'Redmi Note 13',       marca:'Xiaomi', imei:'862058076576003', linea:'ENTEL', plan:'S/ 74.90' },
+  { id:'c5', resp:'Maryfeli Gómez',      area:'Atención al Cliente',        modelo:'Honor X5C Plus',      marca:'Honor',  imei:'866151080289949', linea:'ENTEL', plan:'S/ 74.90' },
+  { id:'c6', resp:'Sheyla Huisñay',      area:'Comercial',                  modelo:'Huawei POT-LX3',      marca:'Huawei', imei:'868576048069561', linea:'ENTEL', plan:'S/ 57.90' },
+  { id:'c7', resp:'Julissa Paucarchuco', area:'Cobranzas',                  modelo:'Honor X5C Plus',      marca:'Honor',  imei:'866151080292505', linea:'ENTEL', plan:'S/ 62.90' },
+  { id:'c8', resp:'Luz Clarita',         area:'Marketing (Pautas)',         modelo:'ZTE Blade A53+',      marca:'ZTE',    imei:'862752060029546', linea:'ENTEL', plan:'S/ 62.90' },
+  { id:'c9', resp:'Alexandra Tirado',    area:'Marketing',                  modelo:'iPhone 15 128GB',     marca:'Apple',  imei:'353281479224491', linea:'ENTEL', plan:'S/ 62.90' },
+];
+
+// Galería visual (sillas) — placeholders de imagen + cantidades por ubicación
+const SEED_MOBILIARIO = {
+  pisos: [
+    { nombre:'Primer Piso',  sillas:46 },
+    { nombre:'Segundo Piso', sillas:17 },
+    { nombre:'Tercer Piso',  sillas:13 },
+    { nombre:'Terraza',      sillas:16 },
+  ],
+  ubicaciones: [
+    { zona:'Recepción · 1er Piso', items:[
+      { tipo:'Silla Ergonómica Malla', cant:1, img:'https://via.placeholder.com/150/0f1e33/f4b500?text=Malla' },
+    ]},
+    { zona:'Comercial y RH · 1er Piso', items:[
+      { tipo:'Silla Ergonómica Malla',   cant:12, img:'https://via.placeholder.com/150/16294a/ffffff?text=Malla' },
+      { tipo:'Silla Ejecutiva Cuero',    cant:4,  img:'https://via.placeholder.com/150/1f3a66/f4b500?text=Cuero' },
+      { tipo:'Silla Ejecutiva Alta',     cant:3,  img:'https://via.placeholder.com/150/0b1626/ffffff?text=Alta' },
+      { tipo:'Silla Visita Cuero',       cant:1,  img:'https://via.placeholder.com/150/2e4f82/ffffff?text=Visita' },
+    ]},
+    { zona:'Contabilidad y Logística · 2do Piso', items:[
+      { tipo:'Silla Ergonómica Malla', cant:3, img:'https://via.placeholder.com/150/16294a/f4b500?text=Malla' },
+      { tipo:'Silla Operativa',        cant:1, img:'https://via.placeholder.com/150/1f3a66/ffffff?text=Oper.' },
+    ]},
+    { zona:'Post Venta · 2do Piso', items:[
+      { tipo:'Silla Ergonómica Malla', cant:3, img:'https://via.placeholder.com/150/0f1e33/ffffff?text=Malla' },
+      { tipo:'Silla Operativa',        cant:1, img:'https://via.placeholder.com/150/2e4f82/f4b500?text=Oper.' },
+    ]},
+    { zona:'Administración · 2do Piso', items:[
+      { tipo:'Silla Ergonómica Malla', cant:2, img:'https://via.placeholder.com/150/16294a/ffffff?text=Malla' },
+      { tipo:'Silla Operativa',        cant:1, img:'https://via.placeholder.com/150/0b1626/f4b500?text=Oper.' },
+    ]},
+  ]
+};
+
+/* ============================================================
+   2) CAPA DE PERSISTENCIA (LocalStorage)
+============================================================ */
+const DB = {
+  load(key, seed) {
+    try {
+      const raw = localStorage.getItem('aurus_' + key);
+      if (raw) return JSON.parse(raw);
+    } catch(e) { console.warn(e); }
+    localStorage.setItem('aurus_' + key, JSON.stringify(seed));
+    return JSON.parse(JSON.stringify(seed));
+  },
+  save(key, data) { localStorage.setItem('aurus_' + key, JSON.stringify(data)); }
+};
+
+let almacen    = DB.load('almacen', SEED_ALMACEN);
+let equipos    = DB.load('equipos', SEED_EQUIPOS);
+let mobiliario = DB.load('mobiliario', SEED_MOBILIARIO);
+
+const CATS = ['Todos','Material','Herramienta','EPP','Uniforme','Consumible'];
+const CAT_STYLE = {
+  Material:    { bg:'bg-blue-50',   text:'text-blue-700',   ico:'fa-cube' },
+  Herramienta: { bg:'bg-amber-50',  text:'text-amber-700',  ico:'fa-screwdriver-wrench' },
+  EPP:         { bg:'bg-rose-50',   text:'text-rose-700',   ico:'fa-helmet-safety' },
+  Uniforme:    { bg:'bg-emerald-50',text:'text-emerald-700',ico:'fa-shirt' },
+  Consumible:  { bg:'bg-violet-50', text:'text-violet-700', ico:'fa-pump-soap' },
+};
+let activeCat = 'Todos';
+
+/* ============================================================
+   3) ENRUTADOR SPA (sin recargas)
+============================================================ */
+const TITLES = {
+  dashboard:  { t:'Dashboard',          s:'Resumen general del inventario de Aurus.' },
+  almacen:    { t:'Almacén Solaria',    s:'Kardex de materiales, herramientas y EPP.' },
+  equipos:    { t:'Asignación Equipos', s:'Celulares corporativos por responsable.' },
+  mobiliario: { t:'Inventario Visual',  s:'Sillas y mobiliario por piso.' },
+};
+
+function go(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+
+  document.querySelectorAll('.nav-link, .bottom-link').forEach(l => {
+    l.classList.toggle('active', l.dataset.view === view);
+  });
+
+  document.getElementById('topTitle').textContent = TITLES[view].t;
+  document.getElementById('deskTitle').textContent = view === 'dashboard' ? 'Panel de Control' : TITLES[view].t;
+  document.getElementById('deskSub').textContent = TITLES[view].s;
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+document.querySelectorAll('.nav-link, .bottom-link').forEach(l => {
+  l.addEventListener('click', () => go(l.dataset.view));
+});
+
+/* ============================================================
+   4) DASHBOARD
+============================================================ */
+function renderDashboard() {
+  const totalActivos = almacen.length + equipos.length + mobiliario.pisos.reduce((a,p)=>a+p.sillas,0);
+  const criticos = almacen.filter(i => i.stock <= i.min);
+  document.getElementById('kpiActivos').textContent   = totalActivos;
+  document.getElementById('kpiCritico').textContent   = criticos.length;
+  document.getElementById('kpiCelulares').textContent = equipos.length;
+  document.getElementById('kpiSillas').textContent    = mobiliario.pisos.reduce((a,p)=>a+p.sillas,0);
+
+  // Lista de stock crítico
+  const ul = document.getElementById('criticalList');
+  ul.innerHTML = criticos.length ? criticos.slice(0,6).map(i => `
+    <li class="px-5 py-3 flex items-center gap-3">
+      <span class="w-8 h-8 grid place-items-center rounded-lg ${CAT_STYLE[i.cat].bg} ${CAT_STYLE[i.cat].text}">
+        <i class="fa-solid ${CAT_STYLE[i.cat].ico} text-xs"></i></span>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold truncate">${i.nombre}</p>
+        <p class="text-[11px] text-slate-400">${i.cat}</p>
+      </div>
+      <span class="text-sm font-bold ${i.stock===0?'text-red-600':'text-amber-600'}">${i.stock} ${i.und}</span>
+    </li>`).join('')
+    : `<li class="px-5 py-6 text-center text-sm text-slate-400">Todo el stock está en niveles óptimos 👍</li>`;
+
+  // Barras por categoría
+  const counts = {};
+  almacen.forEach(i => counts[i.cat] = (counts[i.cat]||0) + i.stock);
+  const max = Math.max(...Object.values(counts), 1);
+  document.getElementById('catBars').innerHTML = Object.entries(counts).map(([cat,val]) => `
+    <div>
+      <div class="flex justify-between text-xs mb-1">
+        <span class="font-semibold ${CAT_STYLE[cat].text}">${cat}</span>
+        <span class="text-slate-400">${val} und</span>
+      </div>
+      <div class="h-2.5 rounded-full bg-slate2-100 overflow-hidden">
+        <div class="h-full rounded-full bg-navy-700" style="width:${(val/max*100).toFixed(0)}%"></div>
+      </div>
+    </div>`).join('');
+}
+
+/* ============================================================
+   5) ALMACÉN SOLARIA
+============================================================ */
+function renderCatFilters() {
+  document.getElementById('catFilters').innerHTML = CATS.map(c => `
+    <button onclick="setCat('${c}')" data-cat="${c}"
+      class="chip shrink-0 px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap
+      ${activeCat===c ? 'bg-navy-800 text-white border-navy-800' : 'bg-white text-slate-500 border-slate2-200'}">
+      ${c}
+    </button>`).join('');
+}
+function setCat(c) { activeCat = c; renderCatFilters(); renderAlmacen(); }
+
+function renderAlmacen() {
+  const q = (document.getElementById('searchAlmacen').value || '').toLowerCase();
+  const list = almacen.filter(i =>
+    (activeCat === 'Todos' || i.cat === activeCat) &&
+    i.nombre.toLowerCase().includes(q)
+  );
+
+  // Mini resumen
+  document.getElementById('almTotal').textContent    = almacen.length;
+  document.getElementById('almUnidades').textContent = almacen.reduce((a,i)=>a+i.stock,0);
+  document.getElementById('almCriticos').textContent = almacen.filter(i=>i.stock<=i.min).length;
+
+  const cont = document.getElementById('almacenList');
+  document.getElementById('almacenEmpty').classList.toggle('hidden', list.length > 0);
+
+  cont.innerHTML = list.map(i => {
+    const st = CAT_STYLE[i.cat];
+    const critical = i.stock <= i.min;
+    return `
+    <div class="bg-white rounded-2xl p-3.5 shadow-card border border-slate2-100 flex items-center gap-3">
+      <span class="w-11 h-11 shrink-0 grid place-items-center rounded-xl ${st.bg} ${st.text}">
+        <i class="fa-solid ${st.ico}"></i></span>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <p class="font-semibold text-sm truncate">${i.nombre}</p>
+          ${critical ? `<span class="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${i.stock===0?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}">${i.stock===0?'Agotado':'Bajo'}</span>`:''}
+        </div>
+        <p class="text-[11px] text-slate-400">${i.cat} · mín. ${i.min} ${i.und}</p>
+      </div>
+      <div class="text-right shrink-0">
+        <p class="font-display font-extrabold text-lg leading-none ${critical?'text-red-600':'text-navy-800'}">${i.stock}</p>
+        <p class="text-[10px] text-slate-400">${i.und}</p>
+      </div>
+      <div class="flex flex-col gap-1.5 shrink-0">
+        <button onclick="openMove('${i.id}','in')" class="w-8 h-8 grid place-items-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition" title="Ingreso"><i class="fa-solid fa-plus text-xs"></i></button>
+        <button onclick="openMove('${i.id}','out')" class="w-8 h-8 grid place-items-center rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition" title="Salida"><i class="fa-solid fa-minus text-xs"></i></button>
+      </div>
+      <button onclick="openQR('ALM','${i.id}')" class="w-8 h-8 shrink-0 grid place-items-center rounded-lg bg-navy-800 text-gold-500 hover:bg-navy-700 transition" title="Ver código QR"><i class="fa-solid fa-qrcode text-xs"></i></button>
+    </div>`;
+  }).join('');
+}
+
+/* ===== Modal: Nuevo ítem ===== */
+function openItemModal() {
+  document.getElementById('f_nombre').value = '';
+  document.getElementById('f_stock').value  = 0;
+  document.getElementById('f_min').value    = 3;
+  document.getElementById('f_und').value    = 'UND';
+  document.getElementById('f_cat').value    = 'Material';
+  document.getElementById('modalItem').classList.remove('hidden');
+}
+function closeItemModal() { document.getElementById('modalItem').classList.add('hidden'); }
+
+function saveItem() {
+  const nombre = document.getElementById('f_nombre').value.trim();
+  if (!nombre) { toast('Ingresa una descripción','fa-circle-exclamation'); return; }
+  const newId = 'm' + Date.now();
+  almacen.unshift({
+    id: newId,
+    nombre: nombre.toUpperCase(),
+    stock: +document.getElementById('f_stock').value || 0,
+    und:   document.getElementById('f_und').value,
+    cat:   document.getElementById('f_cat').value,
+    min:   +document.getElementById('f_min').value || 0,
+  });
+  DB.save('almacen', almacen);
+  closeItemModal();
+  renderAlmacen(); renderDashboard();
+  toast('Ítem agregado · generando QR…');
+  // Al registrar un producto nuevo se genera y muestra su QR para imprimir/pegar
+  setTimeout(() => openQR('ALM', newId), 350);
+}
+
+/* ===== Modal: Movimiento Ingreso / Salida ===== */
+let moveCtx = { id:null, type:'in' };
+function openMove(id, type) {
+  const item = almacen.find(i => i.id === id);
+  moveCtx = { id, type };
+  document.getElementById('moveItemName').textContent = item.nombre + ' · stock actual: ' + item.stock + ' ' + item.und;
+  document.getElementById('moveQty').value = 1;
+  setMoveType(type);
+  document.getElementById('modalMove').classList.remove('hidden');
+}
+function closeMoveModal() { document.getElementById('modalMove').classList.add('hidden'); }
+function setMoveType(type) {
+  moveCtx.type = type;
+  const ing = document.getElementById('btnIng'), sal = document.getElementById('btnSal');
+  ing.className = 'flex-1 py-3 rounded-xl font-bold text-sm border-2 transition ' +
+    (type==='in' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate2-200 text-slate-400');
+  sal.className = 'flex-1 py-3 rounded-xl font-bold text-sm border-2 transition ' +
+    (type==='out' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate2-200 text-slate-400');
+}
+function confirmMove() {
+  const qty = +document.getElementById('moveQty').value || 0;
+  if (qty <= 0) { toast('Cantidad inválida','fa-circle-exclamation'); return; }
+  const item = almacen.find(i => i.id === moveCtx.id);
+  if (moveCtx.type === 'out' && qty > item.stock) { toast('Stock insuficiente','fa-circle-exclamation'); return; }
+  item.stock += (moveCtx.type === 'in' ? qty : -qty);
+  DB.save('almacen', almacen);
+  closeMoveModal();
+  renderAlmacen(); renderDashboard();
+  toast((moveCtx.type==='in'?'Ingreso':'Salida') + ' registrada: ' + qty + ' ' + item.und);
+}
+
+/* ============================================================
+   6) ASIGNACIÓN DE EQUIPOS (celulares)
+============================================================ */
+const BRAND_ICO = { Apple:'fa-apple', Samsung:'fa-android', default:'fa-mobile-screen' };
+function initials(name){ return name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+
+function renderEquipos() {
+  const q = (document.getElementById('searchEquipos').value || '').toLowerCase();
+  const list = equipos.filter(e =>
+    e.resp.toLowerCase().includes(q) || e.modelo.toLowerCase().includes(q) || e.area.toLowerCase().includes(q)
+  );
+  document.getElementById('equiposList').innerHTML = list.map(e => `
+    <div class="bg-white rounded-2xl shadow-card border border-slate2-100 overflow-hidden">
+      <div class="bg-navy-800 px-4 py-3 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-gold-500 text-navy-900 grid place-items-center font-display font-extrabold text-sm">${initials(e.resp)}</div>
+        <div class="min-w-0">
+          <p class="text-white font-semibold text-sm truncate">${e.resp}</p>
+          <p class="text-gold-500 text-[11px] truncate">${e.area}</p>
+        </div>
+      </div>
+      <div class="p-4 space-y-2.5">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-mobile-screen-button text-navy-600 w-4"></i>
+          <span class="text-sm font-semibold">${e.modelo}</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <i class="fa-solid fa-barcode w-4"></i> IMEI: <span class="font-mono">${e.imei}</span>
+        </div>
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-600"><i class="fa-solid fa-signal"></i> ${e.linea}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold text-slate-500">${e.plan}</span>
+            <button onclick="openQR('EQP','${e.id}')" class="w-7 h-7 grid place-items-center rounded-lg bg-navy-800 text-gold-500 hover:bg-navy-700 transition" title="Ver QR del equipo"><i class="fa-solid fa-qrcode text-[11px]"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+/* ============================================================
+   7) INVENTARIO VISUAL (sillas / mobiliario)
+============================================================ */
+function renderMobiliario() {
+  const total = mobiliario.pisos.reduce((a,p)=>a+p.sillas,0);
+  document.getElementById('totalSillas').textContent = total;
+
+  // Resumen por piso
+  document.getElementById('pisoSummary').innerHTML = mobiliario.pisos.map(p => `
+    <div class="p-4 text-center">
+      <p class="font-display font-extrabold text-2xl text-navy-800">${p.sillas}</p>
+      <p class="text-[11px] text-slate-400 mt-1">${p.nombre}</p>
+    </div>`).join('');
+
+  // Galería por ubicación
+  document.getElementById('galeria').innerHTML = mobiliario.ubicaciones.map((u, zi) => `
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-1.5 h-5 bg-gold-500 rounded-full"></span>
+        <h3 class="font-display font-bold">${u.zona}</h3>
+        <span class="text-[11px] text-slate-400">· ${u.items.reduce((a,i)=>a+i.cant,0)} unid.</span>
+        <button onclick="openFurni(${zi})" class="ml-auto text-[11px] font-bold text-navy-700 bg-slate2-100 hover:bg-slate2-200 px-3 py-1.5 rounded-full transition"><i class="fa-solid fa-camera"></i> Agregar</button>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        ${u.items.map((i, ii) => `
+          <div class="bg-white rounded-2xl shadow-card border border-slate2-100 overflow-hidden group">
+            <div class="relative aspect-square bg-slate2-100">
+              <img src="${i.img}" alt="${i.tipo}" class="w-full h-full object-cover" loading="lazy"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+              <div class="hidden absolute inset-0 place-items-center text-slate-300"><i class="fa-solid fa-chair text-4xl"></i></div>
+              <span class="absolute top-2 right-2 bg-navy-900/85 text-white text-[11px] font-bold px-2 py-1 rounded-full">x${i.cant}</span>
+              <button onclick="changePhoto(${zi},${ii})" class="absolute bottom-2 left-2 w-8 h-8 grid place-items-center rounded-lg bg-navy-900/80 text-gold-500 hover:bg-navy-900 transition" title="Cambiar foto"><i class="fa-solid fa-camera text-xs"></i></button>
+              <button onclick="removeFurni(${zi},${ii})" class="absolute bottom-2 right-2 w-8 h-8 grid place-items-center rounded-lg bg-rose-600/85 text-white hover:bg-rose-600 transition" title="Eliminar"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>
+            <div class="p-3">
+              <p class="text-xs font-semibold leading-tight">${i.tipo}</p>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+/* ===== Carga de fotos reales del mobiliario ===== */
+// Redimensiona la imagen antes de guardarla (evita llenar el LocalStorage)
+function fileToDataURL(file, max = 700, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject; img.src = fr.result;
+    };
+    fr.onerror = reject; fr.readAsDataURL(file);
+  });
+}
+
+// Modal "Agregar mobiliario"
+let furniCtx = { zona: 0, dataUrl: null };
+function openFurni(zonaIdx) {
+  furniCtx = { zona: zonaIdx, dataUrl: null };
+  document.getElementById('furniZona').textContent = 'Ubicación: ' + mobiliario.ubicaciones[zonaIdx].zona;
+  document.getElementById('furniTipo').value = '';
+  document.getElementById('furniCant').value = 1;
+  document.getElementById('furniPreview').innerHTML = '<div class="text-center"><i class="fa-solid fa-camera text-2xl"></i><p class="text-xs mt-2">Toca para tomar o subir foto</p></div>';
+  document.getElementById('modalFurni').classList.remove('hidden');
+}
+function closeFurni() { document.getElementById('modalFurni').classList.add('hidden'); }
+
+async function previewFurni(input) {
+  if (!input.files || !input.files[0]) return;
+  try {
+    furniCtx.dataUrl = await fileToDataURL(input.files[0]);
+    document.getElementById('furniPreview').innerHTML =
+      `<img src="${furniCtx.dataUrl}" class="w-full h-full object-cover" />`;
+  } catch (e) { toast('No se pudo procesar la imagen', 'fa-circle-exclamation'); }
+}
+
+function saveFurni() {
+  const tipo = document.getElementById('furniTipo').value.trim();
+  const cant = +document.getElementById('furniCant').value || 1;
+  if (!tipo) { toast('Ingresa una descripción', 'fa-circle-exclamation'); return; }
+  mobiliario.ubicaciones[furniCtx.zona].items.push({
+    tipo, cant,
+    img: furniCtx.dataUrl || 'https://via.placeholder.com/150/0f1e33/f4b500?text=Foto'
+  });
+  DB.save('mobiliario', mobiliario);
+  closeFurni();
+  renderMobiliario();
+  toast('Mobiliario agregado');
+}
+
+// Cambiar la foto de un item existente (usa un input file temporal)
+function changePhoto(zi, ii) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.onchange = async () => {
+    if (!input.files[0]) return;
+    try {
+      mobiliario.ubicaciones[zi].items[ii].img = await fileToDataURL(input.files[0]);
+      DB.save('mobiliario', mobiliario);
+      renderMobiliario();
+      toast('Foto actualizada');
+    } catch (e) { toast('No se pudo procesar la imagen', 'fa-circle-exclamation'); }
+  };
+  input.click();
+}
+
+function removeFurni(zi, ii) {
+  mobiliario.ubicaciones[zi].items.splice(ii, 1);
+  DB.save('mobiliario', mobiliario);
+  renderMobiliario();
+  toast('Mobiliario eliminado');
+}
+
+/* ============================================================
+   8) CÓDIGOS QR — generar / imprimir / descargar / leer
+   Formato del código: AURUS-<TIPO>-<id>   (ej. AURUS-ALM-m1)
+============================================================ */
+function assetByCode(code) {
+  const m = (code || '').trim().toUpperCase().match(/^AURUS-(ALM|EQP)-(.+)$/);
+  if (!m) return null;
+  const [, tipo, id] = m;
+  if (tipo === 'ALM') { const it = almacen.find(i => i.id.toUpperCase() === id); return it && { tipo, item:it, nombre:it.nombre }; }
+  if (tipo === 'EQP') { const eq = equipos.find(e => e.id.toUpperCase() === id); return eq && { tipo, item:eq, nombre:eq.modelo + ' · ' + eq.resp }; }
+  return null;
+}
+function codeFor(tipo, id) { return 'AURUS-' + tipo + '-' + id; }
+
+let qrCtx = null;
+function openQR(tipo, id) {
+  const code = codeFor(tipo, id);
+  const a = assetByCode(code);
+  if (!a) { toast('Activo no encontrado','fa-circle-exclamation'); return; }
+  qrCtx = { code, nombre:a.nombre };
+
+  const box = document.getElementById('qrCanvas');
+  box.innerHTML = '';
+  // Genera el QR real con la librería qrcodejs
+  new QRCode(box, { text: code, width: 168, height: 168, colorDark: '#0f1e33', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+
+  document.getElementById('qrName').textContent = a.nombre;
+  document.getElementById('qrCode').textContent = code;
+  document.getElementById('modalQR').classList.remove('hidden');
+}
+function closeQR() { document.getElementById('modalQR').classList.add('hidden'); }
+
+/* Descargar el QR como PNG (lo que se pega en la herramienta/producto) */
+function downloadQR() {
+  const canvas = document.querySelector('#qrCanvas canvas');
+  if (!canvas) { toast('QR no disponible','fa-circle-exclamation'); return; }
+  const a = document.createElement('a');
+  a.download = qrCtx.code + '.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  toast('QR descargado');
+}
+
+/* Imprimir una etiqueta individual */
+function printQR() {
+  const canvas = document.querySelector('#qrCanvas canvas');
+  if (!canvas) return;
+  printLabels([{ img: canvas.toDataURL('image/png'), nombre: qrCtx.nombre, code: qrCtx.code }]);
+}
+
+/* Imprimir TODAS las etiquetas del almacén en una sola hoja */
+function printAllLabels() {
+  const tmp = document.createElement('div');
+  tmp.style.position = 'fixed'; tmp.style.left = '-9999px';
+  document.body.appendChild(tmp);
+  const labels = almacen.map(it => {
+    const holder = document.createElement('div');
+    tmp.appendChild(holder);
+    const code = codeFor('ALM', it.id);
+    new QRCode(holder, { text: code, width: 150, height: 150, colorDark:'#0f1e33', colorLight:'#ffffff' });
+    const cv = holder.querySelector('canvas');
+    return { img: cv ? cv.toDataURL('image/png') : '', nombre: it.nombre, code };
+  });
+  document.body.removeChild(tmp);
+  printLabels(labels);
+  toast('Generando hoja de etiquetas…','fa-print');
+}
+
+/* Ventana de impresión con grilla de etiquetas */
+function printLabels(labels) {
+  const cells = labels.map(l => `
+    <div class="lbl">
+      <div class="hdr">AURUS · ALMACÉN</div>
+      <img src="${l.img}" />
+      <div class="nm">${l.nombre}</div>
+      <div class="cd">${l.code}</div>
+    </div>`).join('');
+  const w = window.open('', '_blank');
+  if (!w) { toast('Permite las ventanas emergentes para imprimir', 'fa-circle-exclamation'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>Etiquetas QR · Aurus</title>
+    <style>
+      *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+      body{margin:14px}
+      .grid{display:flex;flex-wrap:wrap;gap:8px}
+      .lbl{width:170px;border:1px dashed #94a3b8;border-radius:10px;padding:10px;text-align:center}
+      .hdr{font-size:9px;font-weight:bold;letter-spacing:1px;color:#0f1e33;margin-bottom:6px}
+      .lbl img{width:130px;height:130px}
+      .nm{font-size:11px;font-weight:bold;margin-top:6px;line-height:1.2}
+      .cd{font-size:9px;color:#64748b;font-family:monospace;margin-top:2px}
+      @media print{.lbl{break-inside:avoid}}
+    </style></head><body>
+    <div class="grid">${cells}</div>
+    </body></html>`);
+  w.document.close();
+  // Se imprime desde la ventana principal (sin etiquetas de script incrustadas, que rompían el HTML)
+  setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 500);
+}
+
+/* ===== Lector QR (cámara real + entrada manual + demo) ===== */
+let html5qr = null;
+
+function openScanner() {
+  document.getElementById('scanCode').value = '';
+  document.getElementById('modalScan').classList.remove('hidden');
+  startCamera();
+}
+
+function startCamera() {
+  const status = document.getElementById('scanStatus');
+  // Si la librería no cargó (sin internet la primera vez) → modo manual/demo
+  if (typeof Html5Qrcode === 'undefined') {
+    status.textContent = 'Sin cámara · usa el código manual o la demo';
+    return;
+  }
+  try {
+    html5qr = new Html5Qrcode('reader', { verbose: false });
+    status.textContent = 'Iniciando cámara…';
+    html5qr.start(
+      { facingMode: 'environment' },          // cámara trasera
+      { fps: 10, qrbox: { width: 200, height: 200 } },
+      (decodedText) => { stopCamera(); resolveScan(decodedText); },  // QR detectado
+      () => {}                                 // ignora errores por frame
+    ).then(() => {
+      status.textContent = 'Apunta al código QR del activo';
+    }).catch(() => {
+      status.textContent = 'Cámara no disponible · ingresa el código manual';
+      html5qr = null;
+    });
+  } catch (e) {
+    status.textContent = 'Cámara no disponible · ingresa el código manual';
+    html5qr = null;
+  }
+}
+
+async function stopCamera() {
+  if (html5qr) {
+    try { await html5qr.stop(); html5qr.clear(); } catch (e) {}
+    html5qr = null;
+  }
+}
+
+function closeScanner() {
+  stopCamera();
+  document.getElementById('modalScan').classList.add('hidden');
+}
+
+/* Resuelve un código leído → navega al activo y permite acción */
+function resolveScan(code) {
+  const a = assetByCode(code);
+  if (!a) { toast('Código no reconocido','fa-circle-exclamation'); return; }
+  closeScanner();
+  if (a.tipo === 'ALM') {
+    go('almacen');
+    document.getElementById('searchAlmacen').value = a.item.nombre;
+    activeCat = 'Todos'; renderCatFilters(); renderAlmacen();
+    toast('QR leído: ' + a.nombre, 'fa-qrcode');
+    setTimeout(() => openMove(a.item.id, 'out'), 400); // en campo lo típico es registrar salida
+  } else {
+    go('equipos');
+    document.getElementById('searchEquipos').value = a.item.resp;
+    renderEquipos();
+    toast('QR leído: ' + a.nombre, 'fa-qrcode');
+  }
+}
+
+/* Simula la lectura de cámara escogiendo un código real existente */
+function simulateScan() {
+  const it = almacen[Math.floor(Math.random() * almacen.length)];
+  resolveScan(codeFor('ALM', it.id));
+}
+
+/* ============================================================
+   9) TOAST + FAB "agregar ítem" contextual
+============================================================ */
+let toastTimer;
+function toast(msg, ico='fa-circle-check') {
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIco').className = 'fa-solid ' + ico + ' text-gold-500';
+  const t = document.getElementById('toast');
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 2600);
+}
+
+/* Botón flotante extra dentro del Almacén para "Agregar ítem" */
+const addBtn = document.createElement('button');
+addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+addBtn.title = 'Agregar ítem';
+addBtn.className = 'fixed right-5 bottom-24 lg:bottom-8 z-40 w-14 h-14 rounded-full bg-navy-800 text-gold-500 grid place-items-center shadow-xl active:scale-95 transition hidden';
+addBtn.onclick = openItemModal;
+document.body.appendChild(addBtn);
+
+// Mostrar el FAB de "agregar" solo en la vista Almacén
+const showAddFab = () => {
+  const visible = document.getElementById('view-almacen').classList.contains('active');
+  addBtn.classList.toggle('hidden', !visible);
+};
+new MutationObserver(showAddFab).observe(document.getElementById('view-almacen'), { attributes:true, attributeFilter:['class'] });
+
+/* ============================================================
+   11) PWA — Manifiesto e iconos EMBEBIDOS + boton de instalacion
+   Todo vive dentro de este unico archivo: no necesita archivos sueltos.
+============================================================ */
+const ICON_192 = 'data:image/png;base64,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';
+const ICON_512 = 'data:image/png;base64,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JsoZszdS9y9nzL5/q1MAJrFxclakzdP9zBmR7uVKFIAJbJacEXmzdG9zVOT7elUKwEA2R87ItEG61zkq032enf8ZEAT36cvndJtituuFihQACCxzkGYsLlDJn7MvAHhvpeC8fBbHAhCLCQAEsvJT86qfC7IyAYAAqoSjaQDEYQIAk1UJ/2srTzogCxMAmEQAmgjATCYAMJin3/esB4ynAMBAgu4+xQjGcgQAAwi25zkWgDFMAKAjT7XHWTfoywQAOhBebZgGQD8mANCY8G/PJAXaMwGARgRUfyYC0I4JAJzk6XQ86w3nmQDAQUJoLtMAOMcEAA4Q/nGYwMAxJgCwg6CJy0QA9jEBgCd4yszD9wTPMQGAB4RJTqYB8DETALhD+OdncgP3KQDwhtBYj+8T3nMEAP8REmtzLAC/MwGATfhXYsIDP5kAUJogqMtEgOpMACjJUyAX7gOqMgGgFJs9t5gGUJEJAGUIfz5iMkQlCgDLs6mzl/uFChwBsCybOGc4FmB1CgDLEfy0pAiwKkcALEX404ujJFajALAEmzOjuM9YhSMAUrMZM4NjAVagAJCS4CcCRYDMHAGQjvAnGvckGZkAkIZNlshMA8hGASA8wU8migBZKACEJfjJTBEgOu8AEJLwZxXuZaIyASAUmyUrMg0gIhMAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChIAQCAghQAAChI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';
+
+// Iconos para el navegador y para iOS (Agregar a pantalla de inicio)
+document.getElementById('apple-icon').href = ICON_192;
+document.getElementById('fav-icon').href   = ICON_192;
+
+// Manifiesto generado al vuelo (Blob) para poder instalar la app sin archivos externos
+const MANIFEST = {
+  name: 'Aurus \u00b7 Control de Inventario',
+  short_name: 'Aurus Inventario',
+  description: 'Control de inventario, activos y equipos para Aurus.',
+  start_url: '.',
+  scope: '.',
+  display: 'standalone',
+  orientation: 'portrait',
+  background_color: '#0f1e33',
+  theme_color: '#0f1e33',
+  lang: 'es-PE',
+  icons: [
+    { src: ICON_192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: ICON_512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+  ]
+};
+try {
+  const mblob = new Blob([JSON.stringify(MANIFEST)], { type: 'application/manifest+json' });
+  document.getElementById('manifest-link').href = URL.createObjectURL(mblob);
+} catch (e) {}
+
+// Botón flotante "Instalar app" (aparece cuando el navegador lo permite)
+let deferredPrompt = null;
+const installBtn = document.createElement('button');
+installBtn.innerHTML = '<i class="fa-solid fa-download"></i> Instalar app';
+installBtn.className = 'fixed left-1/2 -translate-x-1/2 bottom-28 lg:bottom-8 z-40 bg-navy-800 text-gold-500 font-bold text-sm px-5 py-3 rounded-full shadow-xl hidden';
+installBtn.onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBtn.classList.add('hidden');
+};
+document.body.appendChild(installBtn);
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.classList.remove('hidden');
+  setTimeout(() => installBtn.classList.add('hidden'), 12000);
+});
+window.addEventListener('appinstalled', () => installBtn.classList.add('hidden'));
+
+/* ============================================================
+   12) INICIALIZACIÓN
+============================================================ */
+function init() {
+  renderDashboard();
+  renderCatFilters();
+  renderAlmacen();
+  renderEquipos();
+  renderMobiliario();
+  showAddFab();
+}
+init();
+</script>
+</body>
+</html>
